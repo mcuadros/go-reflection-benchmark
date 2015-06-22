@@ -83,9 +83,50 @@ func (s *S) BenchmarkMakeMapAndFillReflect(c *C) {
 	}
 }
 
+func (s *S) BenchmarkGetMapKeys(c *C) {
+	m := s.buildMap(100)
+	for i := 0; i < c.N; i++ {
+		keys := make([]int, 100)
+		for k, _ := range m {
+			keys = append(keys, k)
+		}
+	}
+}
+
+func (s *S) BenchmarkGetMapKeysReflect(c *C) {
+	m := s.buildMap(100)
+	for i := 0; i < c.N; i++ {
+		reflect.ValueOf(m).MapKeys()
+	}
+}
+
 func (s *S) BenchmarkCallFunc(c *C) {
 	for i := 0; i < c.N; i++ {
 		multiply(42, 42)
+	}
+}
+
+func (s *S) BenchmarkMakeFuncAndCall(c *C) {
+	base := func(args []int) int { return multiply(args[0], args[1]) }
+	for i := 0; i < c.N; i++ {
+		fn := func(a int, b int) int {
+			return base([]int{a, b})
+		}
+
+		fn(42, 42)
+	}
+}
+
+func (s *S) BenchmarkMakeFuncAndCallReflect(c *C) {
+	base := func(args []reflect.Value) []reflect.Value {
+		return []reflect.Value{reflect.ValueOf(
+			multiply(int(args[0].Int()), int(args[1].Int())),
+		)}
+	}
+
+	for i := 0; i < c.N; i++ {
+		fn := reflect.MakeFunc(reflect.TypeOf(multiply), base)
+		fn.Call([]reflect.Value{reflect.ValueOf(42), reflect.ValueOf(42)})
 	}
 }
 
@@ -118,6 +159,15 @@ func (s *S) BenchmarkMakeChanAndPutReflect(c *C) {
 		ch.Send(reflect.ValueOf(42))
 		ch.Close()
 	}
+}
+
+func (s *S) buildMap(l int) map[int]int {
+	value := make(map[int]int, 0)
+	for i := 0; i < l; i++ {
+		value[s.ints[i]] = 42
+	}
+
+	return value
 }
 
 func multiply(a, b int) int {
