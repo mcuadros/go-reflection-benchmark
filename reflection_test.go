@@ -35,12 +35,10 @@ func (s *S) BenchmarkInitVar(c *C) {
 }
 
 func (s *S) BenchmarkInitVarReflect(c *C) {
-	var value reflect.Value
 	for i := 0; i < c.N; i++ {
-		value = reflect.ValueOf(42)
+		reflect.ValueOf(42)
 	}
 
-	_ = value
 }
 
 func (s *S) BenchmarkMakeSliceAndFill(c *C) {
@@ -54,10 +52,7 @@ func (s *S) BenchmarkMakeSliceAndFill(c *C) {
 
 func (s *S) BenchmarkMakeSliceAndFillReflect(c *C) {
 	for i := 0; i < c.N; i++ {
-		value := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(42)), 0, 0)
-		for i := 0; i < 100; i++ {
-			value = reflect.Append(value, reflect.ValueOf(42))
-		}
+		MakeSliceAndFill()
 	}
 }
 
@@ -65,21 +60,14 @@ func (s *S) BenchmarkMakeMapAndFill(c *C) {
 	for i := 0; i < c.N; i++ {
 		value := make(map[int]int, 0)
 		for i := 0; i < 100; i++ {
-			value[s.ints[i]] = 42
+			value[i] = 42
 		}
 	}
 }
 
 func (s *S) BenchmarkMakeMapAndFillReflect(c *C) {
 	for i := 0; i < c.N; i++ {
-		T := reflect.TypeOf(42)
-		value := reflect.MakeMap(reflect.MapOf(T, T))
-		for i := 0; i < 100; i++ {
-			value.SetMapIndex(
-				reflect.ValueOf(s.ints[i]),
-				reflect.ValueOf(42),
-			)
-		}
+		MakeMapAndFill()
 	}
 }
 
@@ -96,7 +84,7 @@ func (s *S) BenchmarkGetMapKeys(c *C) {
 func (s *S) BenchmarkGetMapKeysReflect(c *C) {
 	m := s.buildMap(100)
 	for i := 0; i < c.N; i++ {
-		reflect.ValueOf(m).MapKeys()
+		GetMapKeys(m)
 	}
 }
 
@@ -118,15 +106,14 @@ func (s *S) BenchmarkMakeFuncAndCall(c *C) {
 }
 
 func (s *S) BenchmarkMakeFuncAndCallReflect(c *C) {
-	base := func(args []reflect.Value) []reflect.Value {
+	impl := func(args []reflect.Value) []reflect.Value {
 		return []reflect.Value{reflect.ValueOf(
-			multiply(int(args[0].Int()), int(args[1].Int())),
+			int(args[0].Int()) * int(args[1].Int()),
 		)}
 	}
 
 	for i := 0; i < c.N; i++ {
-		fn := reflect.MakeFunc(reflect.TypeOf(multiply), base)
-		fn.Call([]reflect.Value{reflect.ValueOf(42), reflect.ValueOf(42)})
+		MakeFuncAndCall(impl)
 	}
 }
 
@@ -151,13 +138,34 @@ func (s *S) BenchmarkMakeChanAndPut(c *C) {
 
 func (s *S) BenchmarkMakeChanAndPutReflect(c *C) {
 	for i := 0; i < c.N; i++ {
-		ch := reflect.MakeChan(reflect.TypeOf(make(chan int)), 0)
-		go func() {
-			ch.Recv()
-		}()
+		MakeChanAndPut()
+	}
+}
 
-		ch.Send(reflect.ValueOf(42))
-		ch.Close()
+func (s *S) BenchmarkNewStructAndSetFieldValue(c *C) {
+	for i := 0; i < c.N; i++ {
+		s := new(Foo)
+		s.Value = 42
+	}
+}
+
+func (s *S) BenchmarkNewStructAndSetFieldValueReflect(c *C) {
+	for i := 0; i < c.N; i++ {
+		NewStructAndSetFieldValue()
+	}
+}
+
+func (s *S) BenchmarkCallStructMethod(c *C) {
+	value := &Foo{42}
+	for i := 0; i < c.N; i++ {
+		value.Multiply(42)
+	}
+}
+
+func (s *S) BenchmarkCallStructMethodReflect(c *C) {
+	value := NewStructAndSetFieldValue()
+	for i := 0; i < c.N; i++ {
+		CallStructMethod(value)
 	}
 }
 
@@ -168,8 +176,4 @@ func (s *S) buildMap(l int) map[int]int {
 	}
 
 	return value
-}
-
-func multiply(a, b int) int {
-	return a * b
 }
